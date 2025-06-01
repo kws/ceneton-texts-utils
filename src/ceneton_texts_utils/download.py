@@ -1,14 +1,20 @@
-from datetime import datetime, timezone
 import hashlib
+from datetime import datetime, timezone
+
 import requests
-from ceneton_texts_utils.url_database import URLDatabase, URLDatabaseEntry, URLDatabaseEntryMetadata
+
+from ceneton_texts_utils.url_database import (
+    URLDatabase,
+    URLDatabaseEntry,
+    URLDatabaseEntryMetadata,
+)
 
 
 def download_url(entry: URLDatabaseEntry):
     if entry.skip:
         print(f"Skipping {entry.url} because it is marked as skipped")
         return
-    
+
     metadata = entry.metadata
     if metadata is None:
         metadata = URLDatabaseEntryMetadata(last_attempt=0, last_status=0)
@@ -26,7 +32,6 @@ def download_url(entry: URLDatabaseEntry):
             print(f"Error {response.status_code} when checking {entry.url}")
             metadata.last_status = response.status_code
             entry.save_metadata(metadata)
-    
 
     response = requests.get(entry.url)
     metadata.last_status = response.status_code
@@ -42,10 +47,6 @@ def download_url(entry: URLDatabaseEntry):
 
     entry.save_metadata(metadata)
 
-
-    
-
-    
 
 def download_all_urls(database: URLDatabase):
     for entry in database.database_entries.values():

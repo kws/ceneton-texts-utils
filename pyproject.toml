@@ -17,6 +17,22 @@ tqdm = "^4.67.1"
 [tool.poetry.scripts]
 ct-utils = "ceneton_texts_utils.__main__:cli"
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.12"
+pre-commit = "^4.2.0"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # E: pycodestyle, F: pyflakes, I: isort
+
+[tool.ruff.format]
+docstring-code-format = true
+
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
