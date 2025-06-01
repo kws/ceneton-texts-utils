@@ -41,9 +41,16 @@ def mappings(csv_path: str, database_folder: str, create: bool):
 @click.option(
     "--database-folder", type=click.Path(exists=True, file_okay=False), default="."
 )
-def download(database_folder: str):
+@click.option(
+    "-m",
+    "--min-interval-minutes",
+    type=int,
+    default=0,
+    help="Skip entries that were last_checked within this many minutes",
+)
+def download(database_folder: str, min_interval_minutes: int):
     database = URLDatabase(f"{database_folder}/index.csv")
-    download_all_urls(database)
+    download_all_urls(database, min_interval_minutes)
 
 
 @cli.command()

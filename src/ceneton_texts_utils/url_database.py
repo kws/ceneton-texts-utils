@@ -33,6 +33,17 @@ class URLDatabaseEntry:
     last_checked: datetime | None = None
     comments: str | None = None
 
+    def __post_init__(self):
+        object.__setattr__(self, "text_id", int(self.text_id))
+
+        if self.last_status:
+            object.__setattr__(self, "last_status", int(self.last_status))
+
+        if isinstance(self.last_checked, str) and self.last_checked:
+            object.__setattr__(
+                self, "last_checked", datetime.fromisoformat(self.last_checked)
+            )
+
     @property
     def archive_folder(self) -> Path:
         hundreds = self.text_id // 100

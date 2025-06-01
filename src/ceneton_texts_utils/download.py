@@ -2,7 +2,7 @@ import hashlib
 import signal
 import sys
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -79,22 +79,50 @@ def download_url(entry: URLDatabaseEntry):
     return metadata
 
 
-def download_all_urls(database: URLDatabase):
+def download_all_urls(database: URLDatabase, min_interval_minutes: int = 0):
+    """Download all URLs in the database, optionally skipping recently checked entries.
+
+    Args:
+        database: The URL database to process
+        min_interval_minutes: Skip entries that were last_checked within this many
+            minutes. Use 0 to disable this filtering (default).
+
+    """
     with shutdown_hook(lambda: database.save_database()):
+        now = datetime.now(tz=timezone.utc)
+        cutoff_time = (
+            now - timedelta(minutes=min_interval_minutes)
+            if min_interval_minutes > 0
+            else None
+        )
+
         written = 0
+        skipped_recent = 0
+
         for entry in database.database_entries.values():
+            # Skip entries that were checked recently
+            if cutoff_time and entry.last_checked and entry.last_checked > cutoff_time:
+                skipped_recent += 1
+                continue
+
             metadata = download_url(entry)
             if metadata is None:
                 continue
 
             data = {
-                "last_checked": datetime.now(tz=timezone.utc),
+                "last_checked": now,
                 "last_status": metadata.last_status,
             }
             database.update_entry(entry.text_id, **data)
             written += 1
             if written % 50 == 0:
                 database.save_database()
+
+        if skipped_recent > 0:
+            print(
+                f"Skipped {skipped_recent} entries that were checked within the last "
+                f"{min_interval_minutes} minutes"
+            )
 
         # Ensure database is saved at the end
         database.save_database()
