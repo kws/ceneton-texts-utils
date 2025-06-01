@@ -113,7 +113,7 @@ class URLDatabase:
 
     @database_is_dirty.setter
     def database_is_dirty(self, value: bool):
-        if value:
+        if value and hasattr(self, "_database_entries_by_url"):
             object.__delattr__(self, "_database_entries_by_url")
 
     def refresh(self):

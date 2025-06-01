@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import click
 from tqdm import tqdm
 
 from ceneton_texts_utils.download import download_all_urls
+from ceneton_texts_utils.indexer import index_ceneton
 from ceneton_texts_utils.url_database import (
     URLDatabase,
     populate_from_mappings,
@@ -76,6 +79,21 @@ def w3m(database_folder: str, entry_ids: list[int] | None):
 
     for entry in tqdm(entries):
         w3m.convert_entry(entry)
+
+
+@cli.command()
+@click.argument("sqlite_path", type=click.Path(exists=True))
+@click.argument("output_path", type=click.Path(writable=True))
+@click.option(
+    "--database-folder", type=click.Path(exists=True, file_okay=False), default="."
+)
+@click.option("--database-table", type=str, default=None)
+def index(
+    sqlite_path: str, output_path: str, database_folder: str, database_table: str | None
+):
+    database_path = Path(database_folder) / "index.csv"
+
+    index_ceneton(Path(sqlite_path), database_path, Path(output_path), database_table)
 
 
 if __name__ == "__main__":
