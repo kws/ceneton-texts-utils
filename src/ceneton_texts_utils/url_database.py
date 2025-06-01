@@ -40,10 +40,14 @@ class URLDatabaseEntry:
     def metadata(self) -> URLDatabaseEntryMetadata:
         if self.metadata_path.exists():
             return URLDatabaseEntryMetadata(**yaml.safe_load(self.metadata_path.read_text()))
-        
+
+    @property
+    def content_path(self) -> Path:
+        return self.archive_folder / "content.html"
+
     @property
     def content(self) -> bytes:
-        with open(self.archive_folder / "content.html", "rb") as f:
+        with open(self.content_path, "rb") as f:
             return f.read()
 
     def save_metadata(self, metadata: URLDatabaseEntryMetadata):
@@ -53,7 +57,7 @@ class URLDatabaseEntry:
 
     def save_content(self, content: bytes):
         self.archive_folder.mkdir(parents=True, exist_ok=True)
-        with open(self.archive_folder / "content.html", "wb") as f:
+        with open(self.content_path, "wb") as f:
             f.write(content)
 
     
@@ -138,6 +142,9 @@ class URLDatabase:
             return url in self.database_entries
         else:
             return url in self.database_entries_by_url
+        
+    def __iter__(self):
+        return iter(self.database_entries.values())
 
 def create_new_database(database_path: str | Path):
     database_path = Path(database_path)
