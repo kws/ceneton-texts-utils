@@ -223,6 +223,8 @@ def populate_from_mappings(database: URLDatabase, csv_path: str | Path):
     csv_path = Path(csv_path)
     assert csv_path.exists(), f"CSV file {csv_path} does not exist"
 
+    mapping_name = csv_path.stem
+
     with open(csv_path, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -239,7 +241,7 @@ def populate_from_mappings(database: URLDatabase, csv_path: str | Path):
 
             database.add_entry(
                 url=url,
-                source_slug="corrected:" + corrected_slug,
+                source_slug=f"{mapping_name}:{corrected_slug}",
                 comments=f"Original slug: {ceneton_slug}",
             )
         database.save_database()
