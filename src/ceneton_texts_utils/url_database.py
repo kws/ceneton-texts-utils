@@ -120,6 +120,7 @@ class URLDatabase:
             for entry in entries:
                 entry_dict = {k: v for k, v in asdict(entry).items() if k in headers}
                 writer.writerow(entry_dict)
+        print(f"Saved database to {self.database_path}")
 
     def add_entry(self, **values: Any) -> URLDatabaseEntry:
         self.__reindex()
@@ -251,8 +252,13 @@ def populate_from_mappings(database: URLDatabase, csv_path: str | Path):
 
             if url in database:
                 entry = database.get_entry_by_url(url)
-                print(f"Updating {url} with {data}")
-                database.update_entry(entry.text_id, **data)
+                if entry.source_slug == data["source_slug"]:
+                    database.update_entry(entry.text_id, **data)
+                else:
+                    print(
+                        f"Skipping {url} because it already exists with a different "
+                        f"source slug: {entry.source_slug} != {data['source_slug']}"
+                    )
             else:
                 database.add_entry(**data)
         database.save_database()
