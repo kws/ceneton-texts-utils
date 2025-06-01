@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 import yaml
 
@@ -95,9 +96,25 @@ class URLDatabase:
         )
 
         self.database_entries: dict[int, URLDatabaseEntry] = {}
-        self.database_entries_by_url: dict[str, URLDatabaseEntry] = {}
 
         self.refresh()
+
+    @property
+    def database_entries_by_url(self) -> dict[str, URLDatabaseEntry]:
+        if self.database_is_dirty:
+            url_dict = {entry.url: entry for entry in self.database_entries.values()}
+            object.__setattr__(self, "_database_entries_by_url", url_dict)
+
+        return object.__getattribute__(self, "_database_entries_by_url")
+
+    @property
+    def database_is_dirty(self) -> bool:
+        return not hasattr(self, "_database_entries_by_url")
+
+    @database_is_dirty.setter
+    def database_is_dirty(self, value: bool):
+        if value:
+            object.__delattr__(self, "_database_entries_by_url")
 
     def refresh(self):
         with open(self.database_path, "r") as f:
@@ -108,12 +125,7 @@ class URLDatabase:
                     text_id=id, database_path=self.database_path, **row
                 )
                 self.database_entries[id] = entry
-        self.__reindex()
-
-    def __reindex(self):
-        self.database_entries_by_url.clear()
-        for entry in self.database_entries.values():
-            self.database_entries_by_url[entry.url] = entry
+        self.database_is_dirty = True
 
     def save_database(self):
         entries = sorted(self.database_entries.values(), key=lambda x: x.text_id)
@@ -134,7 +146,6 @@ class URLDatabase:
         print(f"Saved database to {self.database_path}")
 
     def add_entry(self, **values: Any) -> URLDatabaseEntry:
-        self.__reindex()
         assert "url" in values, "url is a required field"
         assert values["url"] is not None, "url cannot be None"
         assert values["url"] not in self.database_entries_by_url, (
@@ -153,14 +164,13 @@ class URLDatabase:
         entry = URLDatabaseEntry(database_path=self.database_path, **values)
         self.database_entries[entry.text_id] = entry
 
-        self.__reindex()
+        self.database_is_dirty = True
         return entry
 
     def get_entry(self, text_id: int) -> URLDatabaseEntry | None:
         return self.database_entries.get(text_id)
 
     def get_entry_by_url(self, url: str) -> URLDatabaseEntry | None:
-        self.__reindex()
         return self.database_entries_by_url.get(url)
 
     def update_entry(self, text_id: int, **values: Any):
@@ -170,7 +180,7 @@ class URLDatabase:
         data = asdict(entry)
         data.update(values)
         self.database_entries[text_id] = URLDatabaseEntry(**data)
-        self.__reindex()
+        self.database_is_dirty = True
 
     def __contains__(self, url: str | int) -> bool:
         if isinstance(url, int):
@@ -195,7 +205,8 @@ def create_new_database(database_path: str | Path):
 
 def _centeton_to_url(ceneton_slug: str) -> str:
     ceneton_slug = ceneton_slug.strip()
-    url = f"{CENETON_ROOT_URL}{ceneton_slug}"
+
+    url = urljoin(CENETON_ROOT_URL, ceneton_slug)
 
     if "#" in url:
         url = url.split("#")[0]
