@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -27,6 +28,9 @@ class URLDatabaseEntry:
     source_slug: str
     database_path: Path
     skip: str | None = None
+    original_slug: str | None = None
+    last_status: int | None = None
+    last_checked: datetime | None = None
     comments: str | None = None
 
     @property
@@ -151,7 +155,9 @@ class URLDatabase:
         entry = self.database_entries.get(text_id)
         if entry is None:
             raise ValueError(f"Entry with text_id {text_id} does not exist")
-        self.database_entries[text_id] = entry
+        data = asdict(entry)
+        data.update(values)
+        self.database_entries[text_id] = URLDatabaseEntry(**data)
         self.__reindex()
 
     def __contains__(self, url: str | int) -> bool:
@@ -224,6 +230,7 @@ def populate_from_mappings(database: URLDatabase, csv_path: str | Path):
     assert csv_path.exists(), f"CSV file {csv_path} does not exist"
 
     mapping_name = csv_path.stem
+    mapping_sha256 = hashlib.sha256(csv_path.read_bytes()).hexdigest()[:8]
 
     with open(csv_path, "r") as f:
         reader = csv.DictReader(f)
@@ -235,13 +242,17 @@ def populate_from_mappings(database: URLDatabase, csv_path: str | Path):
                 continue
 
             url = _centeton_to_url(corrected_slug)
-            if url in database:
-                print(f"Skipping {url} because it already exists")
-                continue
+            data = {
+                "url": url,
+                "source_slug": f"{mapping_name}:{corrected_slug}",
+                "original_slug": f"ceneton:{ceneton_slug}",
+                "comments": f"Mapped from {mapping_name}@{mapping_sha256}",
+            }
 
-            database.add_entry(
-                url=url,
-                source_slug=f"{mapping_name}:{corrected_slug}",
-                comments=f"Original slug: {ceneton_slug}",
-            )
+            if url in database:
+                entry = database.get_entry_by_url(url)
+                print(f"Updating {url} with {data}")
+                database.update_entry(entry.text_id, **data)
+            else:
+                database.add_entry(**data)
         database.save_database()
